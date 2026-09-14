@@ -1,5 +1,5 @@
 # Prestige Network Optimizer
-PRESTIGE TECH — by Dominik Wasilak — v0.1.0
+PRESTIGE TECH — by Dominik Wasilak — v0.2.0
 
 Pomiar i jawne zmiany DNS lub MTU na Windows z backupem, porównaniem i rollbackiem.
 
