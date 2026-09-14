@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+.env
+logs/*
+!logs/.gitkeep
+reports/*
+!reports/.gitkeep
+
+*.sqlite
+*.sqlite-*
+*.db
+*.db-*
+*.egg-info/
+build/
+dist/
