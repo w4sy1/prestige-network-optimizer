@@ -78,9 +78,12 @@ def rollback(path,execute):
     original=record['original'];index=interface(original['index']);current=snapshot(index)
     if not execute:return {'plan':'Przywrócenie poprzedniego ustawienia','original':original,'current':current}
     if record['kind']=='dns':
+        if current['dns']==original['dns'] and current['automatic']==original['automatic']:return {'restored':False,'already_restored':True}
+        if current['automatic']:raise ValueError('Tryb DNS zmieniono po operacji; rollback odmówiony.')
         if current['dns']!=record['value']:raise ValueError('DNS zmieniono od czasu operacji; rollback odmówiony.')
         change(index,'automatic' if original['automatic'] else 'dns',original['dns'])
     else:
+        if current['mtu']==original['mtu']:return {'restored':False,'already_restored':True}
         if current['mtu']!=record['value']:raise ValueError('MTU zmieniono od czasu operacji.')
         change(index,'mtu',original['mtu'])
     return {'restored':True}

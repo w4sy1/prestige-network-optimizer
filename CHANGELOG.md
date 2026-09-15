@@ -15,3 +15,8 @@ Testy ICMP DF dla MTU oraz odczyt TCP, energii NIC, IPv4/IPv6 i liczby wpisów D
 - GUI, PDF i samodzielny build EXE.
 - Ograniczony bufor wyników, poprawiona obsługa UTF-8 i zatrzymywania backendu.
 - Konfiguracja testów CI; zależności zachowują oryginalne licencje.
+
+## 0.3.4
+
+- Rollback nie powtarza przywróconych ustawień ani nie nadpisuje późniejszego trybu automatycznego DNS.
+- Testy błędów i zachowania danych.

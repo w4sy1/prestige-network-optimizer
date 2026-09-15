@@ -1,5 +1,5 @@
 # Prestige Network Optimizer
-PRESTIGE TECH — by Dominik Wasilak — v0.3.1
+PRESTIGE TECH — by Dominik Wasilak — v0.3.4
 
 Pomiar i jawne zmiany DNS lub MTU na Windows z backupem, porównaniem i rollbackiem.
 
@@ -39,3 +39,9 @@ biblioteki Python są dołączone. Zewnętrzne backendy systemowe pozostają wym
 Budowa: [docs/BUILD.md](docs/BUILD.md). Obsługa: [docs/GUI.md](docs/GUI.md).
 Ograniczenia bufora i testów: [docs/DESKTOP-STATUS.md](docs/DESKTOP-STATUS.md).
 Własny kod ma licencję MIT. Licencje zależności: THIRD_PARTY_NOTICES.txt.
+
+## Poprawki rollbacku 0.3.4
+
+Rollback nie powtarza przywróconych ustawień ani nie nadpisuje późniejszego trybu automatycznego DNS.
+
+Szczegóły: [docs/RECOVERY.md](docs/RECOVERY.md).
