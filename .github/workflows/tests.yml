@@ -1,0 +1,36 @@
+name: Tests
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        python: ['3.11', '3.14']
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install optional dependencies
+        shell: pwsh
+        run: |
+          python -m pip install -r requirements-gui.txt
+          if (Test-Path requirements-signing.txt) { python -m pip install -r requirements-signing.txt }
+      - name: Test backend and graphical window
+        shell: pwsh
+        run: |
+          if (Test-Path app.py) {
+            python -m unittest discover -s tests -v
+            if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          } else {
+            Get-ChildItem tests/*.ps1 | ForEach-Object {
+              & pwsh -NoProfile -File $_.FullName
+              if ($LASTEXITCODE) { exit $LASTEXITCODE }
+            }
+          }
+          python gui.py --smoke
+          exit $LASTEXITCODE

@@ -16,7 +16,7 @@ import uuid
 for stream in (sys.stdout,sys.stderr):
     if hasattr(stream,'reconfigure'):stream.reconfigure(encoding='utf-8',errors='replace')
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(os.environ.get('PRESTIGE_DATA_DIR',str(Path(__file__).resolve().parent))) if getattr(sys,'frozen',False) else Path(__file__).resolve().parent
 NOTICE = 'Narzędzie przeznaczone do celów edukacyjnych, diagnostycznych oraz do pracy z systemami i sieciami, których właścicielem jest użytkownik lub na których testowanie posiada zgodę.'
 
 def now():
@@ -114,6 +114,7 @@ def export(data, directory, metadata):
 
 def parser(description):
     result=argparse.ArgumentParser(description=description)
+    result.add_argument('--pdf',help='Zapisz raport również jako PDF pod wskazaną nową ścieżką')
     result.add_argument('--output',help='Katalog raportów JSON/TXT/HTML')
     result.add_argument('--dry-run',action='store_true',help='Pokaż plan bez wykonywania')
     result.add_argument('--support',action='store_true',help='Wesprzyj autora')
@@ -133,6 +134,9 @@ def entry(build, handler):
             return 0
         data=handler(args)
         report=dict(schema_version=1,tool=meta['name'],version=meta['version'],created_utc=now(),data=data)
+        if args.pdf:
+            from pdf_export import export_pdf
+            export_pdf(report,args.pdf,title=meta['name'])
         if args.output:
             print(export(report,args.output,meta))
         else:
