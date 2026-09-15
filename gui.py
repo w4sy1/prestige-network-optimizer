@@ -1,6 +1,7 @@
 """Standalone graphical shell. This file is copied into each independent project."""
 from pathlib import Path
 import argparse
+import codecs
 import json
 import os
 import queue
@@ -13,6 +14,7 @@ import tkinter as tk
 from tkinter import ttk,filedialog,messagebox,simpledialog
 
 FROZEN=getattr(sys,'frozen',False)
+MAX_OUTPUT=64*1024
 BUNDLE=Path(getattr(sys,'_MEIPASS',Path(__file__).resolve().parent))
 TOOLS_ROOT=Path(sys.executable).resolve().parent if FROZEN else Path(__file__).resolve().parent.parent
 ROOT=(Path(os.environ.get('LOCALAPPDATA',str(Path.home()/'.local/share')))/'PrestigeTech'/Path(sys.executable).stem) if FROZEN else Path(__file__).resolve().parent
@@ -41,6 +43,8 @@ def schema():
         fields=[{'dest':'Command','option':'-Command','choices':['modules','collect','network-test','updates-check','repair','cleanup-scan','cleanup-preview','cleanup-clean','cleanup-restore','support'],'default':'modules'},
             {'dest':'Modules','option':'-Modules','default':'all'}, {'dest':'Operation','option':'-Operation','choices':['sfc','dism-scan','dism-restore','flush-dns','winsock-reset','dhcp-renew'],'default':'dism-scan'}]
         fields += [{'dest':name,'option':'-'+name,'default':''} for name in ('OutputDirectory','PlanPath','QuarantineDirectory','Gateway','InternetTarget','DnsName')]
+        fields += [{'dest':'Count','option':'-Count','default':4},
+            {'dest':'CleanupProfile','option':'-CleanupProfile','choices':['user-temp','windows-temp','directx-cache','recycle-bin'],'default':'user-temp'}]
         fields += [{'dest':name,'option':'-'+name,'boolean':True,'default':False} for name in ('DryRun','Execute','AcceptNoRollback')]
         return fields
     import app
@@ -64,6 +68,10 @@ def arguments(fields,values):
             continue
         if value is None or str(value).strip()=='':continue
         values_list=str(value).splitlines() if field.get('multiple') else [str(value)]
+        if option and field.get('multiple') and not field.get('append'):
+            items=[item.strip() for item in values_list if item.strip()]
+            if items:options.extend([option,*items])
+            continue
         for item in values_list:
             if not item.strip():continue
             if option:options.extend([option,item.strip()])
@@ -78,7 +86,7 @@ def backend_command(args):
 
 class Window:
     def __init__(self,window):
-        self.window=window;self.process=None;self.events=queue.Queue();self.variables={};self.fields=schema();self.last_output=''
+        self.window=window;self.process=None;self.events=queue.Queue(maxsize=128);self.variables={};self.fields=schema();self.last_output='';self.output_truncated=False
         metadata=json.loads((ROOT/'metadata.json').read_text(encoding='utf-8'))
         window.title(metadata['name']+' | PRESTIGE TECH');window.geometry('1120x820');window.minsize(850,600)
         style=ttk.Style();style.theme_use('clam')
@@ -115,7 +123,10 @@ class Window:
                 if not field.get('multiple') and any(word in name.lower() for word in ('file','root','input','output','directory','destination','manifest','archive','database','snapshot','plan','quarantine')):
                     ttk.Button(body,text='Wybierz…',command=lambda v=variable,n=name:self.browse(v,n)).grid(row=index,column=2,padx=5)
             self.variables[name]=variable
-        self.output=tk.Text(result,wrap='word',background='#0a1320',foreground='#e5edf5',insertbackground='white',font=('Consolas',10));self.output.pack(fill='both',expand=True)
+        self.output=tk.Text(result,wrap='none',background='#0a1320',foreground='#e5edf5',insertbackground='white',font=('Consolas',10))
+        horizontal=ttk.Scrollbar(result,orient='horizontal',command=self.output.xview);horizontal.pack(side='bottom',fill='x')
+        vertical=ttk.Scrollbar(result,orient='vertical',command=self.output.yview);vertical.pack(side='right',fill='y')
+        self.output.configure(xscrollcommand=horizontal.set,yscrollcommand=vertical.set);self.output.pack(fill='both',expand=True)
         self.service_form(tabs)
         self.status=tk.StringVar(value='Gotowy. Wybierz operację i parametry.');ttk.Label(outer,textvariable=self.status).pack(anchor='w',pady=8)
         buttons=ttk.Frame(outer);buttons.pack(fill='x')
@@ -193,38 +204,65 @@ class Window:
         args=self.args()
         if '--provider' in args and args[args.index('--provider')+1]=='openai' and '--preview-send' not in args and '--dry-run' not in args:
             if not messagebox.askyesno('Zewnętrzne AI','Wybrane metryki zostaną wysłane do OpenAI. Obowiązują warunki i opłaty konta API. Kontynuować?'):return
-        self.output.delete('1.0','end');self.last_output='';self.start.configure(state='disabled');self.status.set('Uruchamianie…');tabs.select(result)
+        self.output.delete('1.0','end');self.last_output='';self.output_truncated=False;self.start.configure(state='disabled');self.status.set('Uruchamianie…');tabs.select(result)
         try:
             self.process=subprocess.Popen(backend_command(args),cwd=ROOT,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,stdin=subprocess.DEVNULL,text=True,encoding='utf-8',errors='replace',creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0),start_new_session=os.name!='nt')
         except OSError as exc:
             self.start.configure(state='normal');self.status.set('Nie można uruchomić programu');messagebox.showerror('Brak backendu',str(exc));return
         process=self.process
         def read():
-            for line in process.stdout:self.events.put(('text',line))
-            self.events.put(('exit',process.wait()))
+            decoder=codecs.getincrementaldecoder('utf-8')(errors='replace')
+            try:
+                while True:
+                    chunk=os.read(process.stdout.fileno(),4096)
+                    if not chunk:break
+                    self.events.put(('text',decoder.decode(chunk)))
+                tail=decoder.decode(b'',final=True)
+                if tail:self.events.put(('text',tail))
+            finally:
+                process.stdout.close()
+                self.events.put(('exit',process.wait()))
         threading.Thread(target=read,daemon=True).start()
 
     def poll(self):
-        while not self.events.empty():
-            kind,value=self.events.get()
+        chunks=[];exit_code=None
+        for _ in range(64):
+            try:kind,value=self.events.get_nowait()
+            except queue.Empty:break
             if kind=='text':
-                self.last_output+=value;self.output.insert('end',value);self.output.see('end')
+                chunks.append(value)
             else:
-                self.process=None;self.start.configure(state='normal');self.status.set('Zakończono pomyślnie' if value==0 else 'Zakończono z kodem '+str(value)+' — sprawdź wynik')
+                exit_code=value
+        if chunks:
+            value=''.join(chunks);self.last_output+=value
+            if len(self.last_output)>MAX_OUTPUT:
+                self.last_output=self.last_output[-MAX_OUTPUT:];self.output.delete('1.0','end');self.output.insert('end',self.last_output);self.output_truncated=True
+            else:self.output.insert('end',value)
+            self.output.see('end')
+        if exit_code is not None:
+            self.process=None;self.start.configure(state='normal');self.status.set('Zakończono pomyślnie' if exit_code==0 else 'Zakończono z kodem '+str(exit_code)+' — sprawdź wynik')
+            if self.output_truncated:self.status.set(self.status.get()+' | Tylko ostatnie 65536 znaków. Pełny raport zapisz opcją backendu.')
         self.window.after(100,self.poll)
 
     def stop(self):
         if self.process and self.process.poll() is None:
-            if os.name=='nt':subprocess.run(['taskkill','/PID',str(self.process.pid),'/T','/F'],capture_output=True,creationflags=subprocess.CREATE_NO_WINDOW)
-            else:
-                import signal
-                os.killpg(self.process.pid,signal.SIGTERM)
+            try:
+                if os.name=='nt':
+                    stopped=subprocess.run(['taskkill','/PID',str(self.process.pid),'/T','/F'],capture_output=True,creationflags=subprocess.CREATE_NO_WINDOW,timeout=5)
+                    if stopped.returncode and self.process.poll() is None:raise OSError('Nie udało się zatrzymać procesu.')
+                else:
+                    import signal
+                    os.killpg(self.process.pid,signal.SIGTERM)
+            except (OSError,subprocess.TimeoutExpired) as exc:
+                if self.process.poll() is None:
+                    self.status.set('Przerwanie nie powiodło się: '+str(exc));return False
             self.status.set('Przerwano proces. Sprawdź plan/kopię operacji przed ponownym uruchomieniem.')
+        return True
 
     def close(self):
         if self.process and self.process.poll() is None:
             if not messagebox.askyesno('Operacja trwa','Zamknąć okno i przerwać uruchomiony proces?'):return
-            self.stop()
+            if self.stop() is False:return
         self.window.destroy()
 
     def save(self):
