@@ -1,10 +1,10 @@
 # Prestige Network Optimizer
-PRESTIGE TECH — by Dominik Wasilak — v0.2.0
+PRESTIGE TECH — by Dominik Wasilak — v0.3.1
 
 Pomiar i jawne zmiany DNS lub MTU na Windows z backupem, porównaniem i rollbackiem.
 
 ## Instalacja i uruchomienie
-Python 3.11+. Skopiuj katalog projektu. Bez instalowania pakietów pip.
+Python 3.11+. Skopiuj katalog projektu. Podstawowy CLI używa biblioteki standardowej. PDF wymaga requirements-gui.txt; podpisy, jeśli dostępne, wymagają requirements-signing.txt.
 ```text
 python app.py --help
 python app.py --support
@@ -31,3 +31,11 @@ Dominik Wasilak, Prestige Tech, prestigetech@gmail.com. Licencja MIT: `LICENSE`.
 ## Wesprzyj autora
 Opcja wsparcia autora zostanie udostępniona w przyszłości.
 Linki w `config/author.json`.
+
+## GUI i EXE 0.3.1
+
+Uruchom `python gui.py` albo samodzielny EXE. W EXE interpreter, PDF i potrzebne
+biblioteki Python są dołączone. Zewnętrzne backendy systemowe pozostają wymagane.
+Budowa: [docs/BUILD.md](docs/BUILD.md). Obsługa: [docs/GUI.md](docs/GUI.md).
+Ograniczenia bufora i testów: [docs/DESKTOP-STATUS.md](docs/DESKTOP-STATUS.md).
+Własny kod ma licencję MIT. Licencje zależności: THIRD_PARTY_NOTICES.txt.
