@@ -26,7 +26,7 @@ Brak uprawnień lub backendu jest błędem, nie pozytywnym wynikiem audytu.
 Zakres MVP i ograniczenia platformowe opisano w `docs/USAGE.md`.
 
 ## Autor i licencja
-Dominik Wasilak, Prestige Tech, prestigetech@gmail.com. Licencja MIT: `LICENSE`.
+Dominik Wasilak, Prestige Tech, prestigetech@gmail.com. Licencja: `Prestige Tech Free Use License` - szczegóły w `LICENSE`.
 
 ## Wesprzyj autora
 Opcja wsparcia autora zostanie udostępniona w przyszłości.
@@ -38,7 +38,7 @@ Uruchom `python gui.py` albo samodzielny EXE. W EXE interpreter, PDF i potrzebne
 biblioteki Python są dołączone. Zewnętrzne backendy systemowe pozostają wymagane.
 Budowa: [docs/BUILD.md](docs/BUILD.md). Obsługa: [docs/GUI.md](docs/GUI.md).
 Ograniczenia bufora i testów: [docs/DESKTOP-STATUS.md](docs/DESKTOP-STATUS.md).
-Własny kod ma licencję MIT. Licencje zależności: THIRD_PARTY_NOTICES.txt.
+Własny kod jest objęty Prestige Tech Free Use License. Licencje zależności pozostają bez zmian: THIRD_PARTY_NOTICES.txt.
 
 ## Poprawki rollbacku 0.3.4
 
