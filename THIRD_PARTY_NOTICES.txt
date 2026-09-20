@@ -1,5 +1,5 @@
 PRESTIGE TECH - third-party notices
-Project code: MIT. Dependencies and fonts retain their original licenses.
+Prestige Tech original code: Prestige Tech Free Use License. Third-party dependencies and fonts retain their original licenses.
 
 
 === reportlab 5.0.1 ===
